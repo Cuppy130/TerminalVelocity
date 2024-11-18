@@ -1,285 +1,285 @@
 import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.170.0/three.webgpu.js";
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / (window.innerHeight - 100), 0.1, 1000)
 
-//created 11/14/2024
+// Version 1.0.0
+// created 11/14/2024 by @Cuppy130
+// last edited 11/17/2024 by @Cuppy130
+// rewritten 11/16/2024 by @Cuppy130
 
-//last updated 11/15/2024
+//global variables
+let selectedParts = [];
+//selection mesh
+let boundingBox = new THREE.Box3();
+const boundingMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true }));
+console.log(boundingMesh);
+boundingMesh.scale.set(1, 1, 1);
+boundingMesh.renderOrder = 1;
+boundingMesh.material.depthTest = false;
+boundingMesh.material.depthWrite = false;
+boundingMesh.material.linewidth = 2;
 
-//vars
-let lookAround = false;
+let mode = "move"; //move, select, rotate, scale
+
+let parts = [];
+let groups = []; // when CTRL + G is pressed, the selected parts will be grouped into a group
+
+let clipboard = [];
+
+let mouse0 = false;
+let mouse1 = false;
+let mouse2 = false;
+
+let mouse0Down = false;
+let mouse1Down = false;
+let mouse2Down = false;
+
+let mouseFunctions = {
+    "Click": (e) => {
+        if (e.button === 0) {
+            console.log(selectedParts);
+            if (!keyPressed("Control")) {
+                //select the part
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(parts);
+                if (intersects.length > 0) {
+                    if (!selectedParts.includes(intersects[0].object)) {
+                        selectedParts = [intersects[0].object];
+                    }
+                } else {
+                    selectedParts = [];
+                }
+                updateBoundingBox();
+            } else {
+                //add to the selection
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(parts);
+                if (intersects.length > 0) {
+                    if (!selectedParts.includes(intersects[0].object)) {
+                        selectedParts.push(intersects[0].object);
+                    }
+                }
+                updateBoundingBox();
+            }
+        }
+    },
+    pointerlockerror: () => {
+        console.error("Pointer lock error! (Could not lock the pointer)");
+    },
+    Contextmenu: (e) => {
+        e.preventDefault();
+    },
+}
+
+const pastActionLimit = 1000;
+let history = [];
+
+
+let cameraSpeed = 0.1;
+
 let mouse = new THREE.Vector2();
 let raycaster = new THREE.Raycaster();
-let playerSpeed = 0.01;
-let sensitivity = 0.005;
 
+
+//three.js setup
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, 640 / 480, 0.1, 1000);
 const renderer = new THREE.WebGPURenderer();
-renderer.setSize(window.innerWidth, window.innerHeight - 100);
+const cameraBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0x00ff00 }));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000000);
 document.body.appendChild(renderer.domElement);
-const geometry = new THREE.BoxGeometry( 2048, 20, 2048 );
-const material = new THREE.MeshStandardMaterial( {color: 0xfff0f0} );
-const baseplate = new THREE.Mesh( geometry, material );
+cameraBox.add(camera);
+scene.add(cameraBox);
+cameraBox.position.set(0, 1, 5);
+scene.add(boundingMesh);
 
-const cameraCube = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial);
-const objectSelections = [];
-const sceneObjects = [];
+//functions
 
-const lastActionsLimit = 1000;
-const lastActions = [
+//CTRL + S
+function saveWorld(worldname) {
+    localStorage.setItem(worldname, JSON.stringify(parts));
+}
+//CTRL + L
+function loadWorld(worldname) {
+    parts = JSON.parse(localStorage.getItem(worldname));
+}
+//CTRL + O
+function deleteWorld(worldname) {
+    localStorage.removeItem(worldname);
+}
+//CTRL + E
+function exportWorld(worldname) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(parts)], { type: "application/json" }));
+    a.download = worldname + ".json";
+    a.click();
+}
 
-]
-
-function newPart(scalex, scaley, scalez, color = 0xcccccc) {
-    const geometry = new THREE.BoxGeometry(scalex, scaley, scalez);
-    
-    // Ensure index buffer exists or set a default index buffer
-    if (!geometry.index) {
-        console.warn("No index buffer found. Setting default index.");
-        geometry.setIndex(geometry.attributes.position);
-    }
-
-    const material = new THREE.MeshStandardMaterial({ color });
-    const part = new THREE.Mesh(geometry, material);
-
-    const cameraDirection = new THREE.Vector3();
-    camera.getWorldDirection(cameraDirection);
-
-    const spawnDistance = 5;
-    const spawnPosition = new THREE.Vector3().copy(cameraCube.position).add(cameraDirection.multiplyScalar(spawnDistance));
-    
-    part.position.copy(spawnPosition);
-
-    scene.add(part);
-    sceneObjects.push(part);
-
-    console.log(part.position);
+//CTRL + N
+function newWorld() {
+    parts = [];
 }
 
 
-baseplate.name = "baseplate";
-const light = new THREE.AmbientLight( 0x404040);
-scene.add(light);
-const directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
-
-directionalLight.position.x = 1;
-directionalLight.position.y = 2;
-directionalLight.position.z = 1;
-directionalLight.castShadow = true;
-
-scene.add( directionalLight );
-
-scene.add( baseplate );
-cameraCube.add(camera)
-cameraCube.position.set(20, 20, 20)
-camera.rotation.set(-1, 0, 0)
-cameraCube.rotation.set(0, 1, 0)
-scene.add(cameraCube)
-renderer.setClearColor(0x00a0a0)
-
-document.addEventListener('mousemove', onMouseMove)
-
-function onMouseMove(event) {
-    if(event.button != 1)return;
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-}
-function getMouse3DObject(){
-    raycaster.setFromCamera(mouse, camera);
-    const intersectableObjects = scene.children.filter(obj => obj.isMesh);
-    const intersects = raycaster.intersectObjects(intersectableObjects);
-    if (intersects.length > 0) {
-        return intersects[0].object;
+//CTRL + I
+function importWorld() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            parts = JSON.parse(e.target.result);
+        }
+        reader.readAsText(file);
     }
-    return null;
-}
-function getMouse3DPosition() {
-    raycaster.setFromCamera(mouse, camera);
-    const intersectableObjects = scene.children.filter(obj => obj.isMesh);
-    const intersects = raycaster.intersectObjects(intersectableObjects);
-    if (intersects.length > 0) {
-        return intersects[0].point;
-    }
-    return null;
+    input.click();
 }
 
+const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
 
-document.addEventListener("contextmenu", (e) => e.preventDefault());
-
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / (window.innerHeight-100);
-    camera.updateProjectionMatrix();
-
-    renderer.setSize(window.innerWidth, window.innerHeight-100);
-});
-
-newPart(2, 1, 4, 0xcfcfcf);
-
-let keysPressed = [];
-function keyPressed(keyString){
-    if(keysPressed.indexOf(keyString)>-1){
-        return true;
-    }
-    return false
-}
-
-document.addEventListener("keydown", e => {
-    e.preventDefault();
-    if(!keysPressed.includes(e.key)){
-        keysPressed.push(e.key);
-    }
-
-    if(keyPressed("Alt") && e.key == "c"){
-        newPart(2, 1, 4, 0xc0c0c0)
-    }
-
-
-})
-
-document.addEventListener("keyup", e => {
-    let index = keysPressed.indexOf(e.key);
-    keysPressed.splice(index, 1);
-})
-
-document.addEventListener("mousemove", e => {
-    if(lookAround){
-        cameraCube.rotation.y -= e.movementX * sensitivity;
-        camera.rotation.x -= e.movementY * sensitivity;
-    }
-})
-
-
-document.addEventListener('wheel', (event) => {
-    const zoomSpeed = 0.1;
-    camera.fov += event.deltaY * zoomSpeed;
-    camera.fov = Math.max(10, Math.min(120, camera.fov));
-    camera.updateProjectionMatrix();
-});
-
-document.addEventListener("click", (e) => {
+function onMouseMove(e) {
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-    const object = getMouse3DObject();
 
-    // Clear selections if no object is clicked
-    if (object == null) {
-        while (objectSelections.length > 0) {
-            const selectedObject = objectSelections[0];
-            if (selectedObject.material && selectedObject.material.wireframe !== undefined) {
-                selectedObject.material.wireframe = false;
-            }
-            objectSelections.splice(0, 1);
-        }
-        return; // Exit early
+    if(mouse2Down) {
+        cameraBox.rotation.y -= e.movementX / 100;
+        camera.rotation.x -= e.movementY / 100;
+        camera.rotation.x = clamp(camera.rotation.x, -PI / 2, PI / 2);
     }
+}
 
-    if (!keyPressed("Control")) {
-        // Clear previous selections
-        while (objectSelections.length > 0) {
-            const selectedObject = objectSelections[0];
-            if (selectedObject.material && selectedObject.material.wireframe !== undefined) {
-                selectedObject.material.wireframe = false;
-            }
-            objectSelections.splice(0, 1);
-        }
-        // Select the new object
-        if (object.material && object.material.wireframe !== undefined) {
-            object.material.wireframe = true;
-        }
-        objectSelections.push(object);
-    } else {
-        // Multi-select or deselect
-        const index = objectSelections.indexOf(object);
-        if (index > -1) {
-            // Deselect the object
-            if (objectSelections[index].material && objectSelections[index].material.wireframe !== undefined) {
-                objectSelections[index].material.wireframe = false;
-            }
-            objectSelections.splice(index, 1);
-        } else {
-            // Add the object to the selection
-            if (object.material && object.material.wireframe !== undefined) {
-                object.material.wireframe = true;
-            }
-            objectSelections.push(object);
-        }
+function updateBoundingBox() {
+    for (let i = 1; i < selectedParts.length; i++) {
+        boundingBox.expandByObject(selectedParts[i]);
     }
+    boundingMesh.scale.set(boundingBox.max.x - boundingBox.min.x, boundingBox.max.y - boundingBox.min.y, boundingBox.max.z - boundingBox.min.z);
+    boundingMesh.position.set(boundingBox.min.x + (boundingBox.max.x - boundingBox.min.x) / 2, boundingBox.min.y + (boundingBox.max.y - boundingBox.min.y) / 2, boundingBox.min.z + (boundingBox.max.z - boundingBox.min.z) / 2);
+}
 
-    console.log(`${objectSelections.length} Objects selected`);
-});
+//game loop
+function gameLoop() {
+    update();
+    renderer.renderAsync(scene, camera);
+    requestAnimationFrame(gameLoop);
+}
 
+function newPart(color = 0x00ff00) {
+    //create a new part
+    const part = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4), new THREE.MeshBasicMaterial({ color }));
+    return part;
+}
 
+function keyPressed(key) {
+    return keyArray.includes(key);
+}
 
+const { PI, sin, cos } = Math;
 
-document.addEventListener("mousedown", (e) => {
-    if(e.button == 2){
-        document.body.requestPointerLock();
-        lookAround = true;
-    }
-});
-
-document.addEventListener("mouseup", (e) => {
-    if(e.button == 2) {
-        if (document.pointerLockElement === document.body) {
-            document.exitPointerLock();
-            lookAround = false;
-        }
-    }
-});
-
-let velocity_x = 0;
-let velocity_y = 0;
-let velocity_z = 0;
-
-function clamp(val, min, max) {return Math.min(max, Math.max(min, val))};
-function animate() {
-
-    if(!keyPressed("Control")){
+//update function
+function update() {
+    //update the camera
+    if(!keyPressed("Control")&&!keyPressed("Shift")&&!keyPressed("Alt")){
         if(keyPressed("w")){
-            velocity_z -= Math.cos(cameraCube.rotation.y) * playerSpeed;
-            velocity_x -= Math.sin(cameraCube.rotation.y) * playerSpeed;
+            const direction = new THREE.Vector3(-sin(cameraBox.rotation.y), tan(camera.rotation.x), -cos(cameraBox.rotation.y)).normalize();
+            cameraBox.position.add(direction.multiplyScalar(cameraSpeed));
         }
         if(keyPressed("s")){
-            velocity_z += Math.cos(cameraCube.rotation.y) * playerSpeed;
-            velocity_x += Math.sin(cameraCube.rotation.y) * playerSpeed;
+            const direction = new THREE.Vector3(sin(cameraBox.rotation.y), -tan(camera.rotation.x), cos(cameraBox.rotation.y)).normalize();
+            cameraBox.position.add(direction.multiplyScalar(cameraSpeed));
         }
         if(keyPressed("a")){
-            velocity_z += Math.sin(cameraCube.rotation.y) * playerSpeed;
-            velocity_x -= Math.cos(cameraCube.rotation.y) * playerSpeed;
+            const direction = new THREE.Vector3(-cos(cameraBox.rotation.y), 0, sin(cameraBox.rotation.y)).normalize();
+            cameraBox.position.add(direction.multiplyScalar(cameraSpeed));
         }
         if(keyPressed("d")){
-            velocity_z -= Math.sin(cameraCube.rotation.y) * playerSpeed;
-            velocity_x += Math.cos(cameraCube.rotation.y) * playerSpeed;
+            const direction = new THREE.Vector3(cos(cameraBox.rotation.y), 0, -sin(cameraBox.rotation.y)).normalize();
+            cameraBox.position.add(direction.multiplyScalar(cameraSpeed));
         }
-        if(keyPressed(" ")){
-            velocity_y += playerSpeed;
+        if(keyPressed("e")){
+            cameraBox.position.y += cameraSpeed;
         }
-        if(keyPressed("Shift")){
-            velocity_y -= playerSpeed;
-        }
-    } else {
-        if(keyPressed("1")){
-            selectedMode = "move";
-        }
-        if(keyPressed("2")){
-            selectedMode = "scale";
-        }
-        if(keyPressed("3")){
-            selectedMode = "rotate";
+        if(keyPressed("q")){
+            cameraBox.position.y -= cameraSpeed;
         }
     }
+}
 
-    velocity_x /= 1.1;
-    velocity_y /= 1.1;
-    velocity_z /= 1.1;
+//init function
+function init() {
+    //create the baseplate
 
-    cameraCube.position.x += velocity_x;
-    cameraCube.position.y += velocity_y;
-    cameraCube.position.z += velocity_z;
+    const baseplate = new THREE.Mesh(new THREE.BoxGeometry(100, 1, 100), new THREE.MeshStandardMaterial({ color: 0x888888 }));
+    
+    scene.add(baseplate);
 
-    camera.rotation.x = clamp(camera.rotation.x, -Math.PI / 2, Math.PI / 2)
+    //create the lighting
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(0, 5, 0);
+    dirLight.target.position.set(0, 0, 0);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+    
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
 
-    renderer.render(scene, camera)
+
 }
 
 
-renderer.setAnimationLoop(animate);
+window.addEventListener("mousemove", onMouseMove);
+window.addEventListener("mousedown", (e) => {
+    if (e.button === 0) mouse0Down = true;
+    if (e.button === 1) mouse1Down = true;
+    if (e.button === 2) {
+        mouse2Down = true
+        document.body.requestPointerLock();
+    };
+});
+
+window.addEventListener("mouseup", (e) => {
+    if (e.button === 0) mouse0Down = false;
+    if (e.button === 1) mouse1Down = false;
+    if (e.button === 2) {
+        mouse2Down = false;
+        document.exitPointerLock();
+    };
+});
+
+window.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+});
+let keyArray = [];
+window.onkeydown = (e) => {
+    e.preventDefault();
+    if (!keyArray.includes(e.key)) keyArray.push(e.key);
+
+    if (e.key === "Backspace") {
+        //delete the selected parts
+        for (let part of selectedParts) {
+            scene.remove(part);
+            parts = parts.filter(p => p !== part);
+        }
+    }
+    if (e.key === "") {
+        
+    }
+}
+window.onkeyup = (e) => {
+    keyArray = keyArray.filter(key => key !== e.key);
+}
+
+window.addEventListener("resize", () => {
+    //resize the renderer
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+document.addEventListener("click", mouseFunctions.Click);
+document.onpointerlockerror = () => {
+    document.exitPointerLock();
+}
+
+init();
+gameLoop();
