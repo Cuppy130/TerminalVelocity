@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Properties</title>
+</head>
+<body>
+    <div class="properties-panel">
+        <div class="property">
+            <label for="color">Sky Color</label>
+            <input type="color" id="skycolor" value="#7F7F7F">
+        </div>
+        <div class="property">
+            <label for="bpColor">Baseplate Color</label>
+            <input type="color" id="bpColor" value="#7F7F7F">
+        </div>
+    </div>
+    <script>
+        // Get the color input element
+        const colorInput = document.getElementById('skycolor');
+        const bpColorInput = document.getElementById('bpColor');
+
+        let data = {
+            skyColor: '#7F7F7F',
+            baseplateColor: '#7F7F7F'
+        }
+
+        // Add an event listener to the color input element
+        colorInput.addEventListener('input', () => {
+            // Set the sky color of the world
+            data.skyColor = colorInput.value;
+
+            // Send the data to the server
+            window.parent.postMessage(data, '*');
+        });
+
+        bpColorInput.addEventListener('input', () => {
+            // Set the baseplate color of the world
+            data.baseplateColor = bpColorInput.value;
+
+            // Send the data to the server
+            window.parent.postMessage(data, '*');
+        });
+    </script>
+</body>
+</html>

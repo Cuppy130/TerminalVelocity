@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Properties Panel</title>
+    <style>
+        /* dark theme */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            min-height: none;
+            min-width: none;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+        }
+        .properties-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .property {
+            display: flex;
+            gap: 10px;
+        }
+        label {
+            font-size: 1.2rem;
+        }
+        input[type="color"] {
+            width: 50px;
+        }
+        input[type="number"] {
+            width: 50px;
+        }
+        input[type="range"] {
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="properties-panel">
+        <div class="property">
+            <label for="color">Color</label>
+            <input type="color" id="color" value="#7F7F7F">
+        </div>
+        <!-- these are for position -->
+        <div class="property">
+            <label for="position-x">Position X</label>
+            <input type="number" id="position-x" value="0">
+        </div>
+        <div class="property">
+            <label for="position-y">Position Y</label>
+            <input type="number" id="position-y" value="0">
+        </div>
+        <div class="property">
+            <label for="position-z">Position Z</label>
+            <input type="number" id="position-z" value="0">
+        </div>
+        <!-- these are for rotation -->
+        <div class="property">
+            <label for="rotation-x">Rotation X</label>
+            <input type="number" id="rotation-x" value="0">
+        </div>
+        <div class="property">
+            <label for="rotation-y">Rotation Y</label>
+            <input type="number" id="rotation-y" value="0">
+        </div>
+        <div class="property">
+            <label for="rotation-z">Rotation Z</label>
+            <input type="number" id="rotation-z" value="0">
+        </div>
+        <!-- these are for scale -->
+        <div class="property">
+            <label for="scale-x">Scale X</label>
+            <input type="number" id="scale-x" value="2">
+        </div>
+        <div class="property">
+            <label for="scale-y">Scale Y</label>
+            <input type="number" id="scale-y" value="1">
+        </div>
+        <div class="property">
+            <label for="scale-z">Scale Z</label>
+            <input type="number" id="scale-z" value="4">
+        </div>
+        <div class="property">
+            <label for="visible">Visible</label>
+            <input type="checkbox" id="visible" checked>
+        </div>
+        <div class="property">
+            <label for="can-collide">Can Collide</label>
+            <input type="checkbox" id="can-collide" checked>
+        </div>
+        <div class="property">
+            <label for="opacity">Opacity</label>
+            <input type="range" id="opacity" min="0" max="1" step="0.01" value="1">
+        </div>
+        <div class="property">
+            <label for="has-shadow">Has Shadow</label>
+            <input type="checkbox" id="has-shadow">
+        </div>
+        <!-- done and cancel to undo changes -->
+        <button onclick="window.close()">Done</button>
+        <button id="cancel">Cancel</button>
+    <script>
+        let properties = {
+            color: "#000000",
+            "position-x": 0,
+            "position-y": 0,
+            "position-z": 0,
+            "rotation-x": 0,
+            "rotation-y": 0,
+            "rotation-z": 0,
+            "scale-x": 2,
+            "scale-y": 1,
+            "scale-z": 4,
+            visible: true,
+            canCollide: true,
+            opacity: 1,
+            hasShadow: false,
+            shadowOpacity: 0.5,
+            shadowBlur: 10,
+            shadowOffsetX: 5,
+            shadowOffsetY: 5
+        };
+
+        const elements = [
+            document.getElementById('color'),
+            document.getElementById('position-x'),
+            document.getElementById('position-y'),
+            document.getElementById('position-z'),
+            document.getElementById('rotation-x'),
+            document.getElementById('rotation-y'),
+            document.getElementById('rotation-z'),
+            document.getElementById('scale-x'),
+            document.getElementById('scale-y'),
+            document.getElementById('scale-z'),
+            document.getElementById('visible'),
+            document.getElementById('can-collide'),
+            document.getElementById('opacity'),
+            document.getElementById('has-shadow')
+        ];
+        elements.forEach(element => {
+            element.addEventListener('input', function() {
+                const id = element.id;
+                const value = element.type === 'checkbox' ? element.checked : element.value;
+                properties[id] = value;
+                window.parent.postMessage(properties, '*');
+            });
+        });
+
+        addEventListener('message', function(event) {
+            const data = event.data;
+            elements.forEach(element => {
+                const id = element.id;
+                if (data[id] !== undefined) {
+                    element.value = data[id];
+                    properties[id] = data[id];
+                }
+            });
+            const colorHex = parseInt(properties.color, 16);
+            elements[0].value = '#' + colorHex.toString(16).padStart(6, '0');
+        });
+    </script>
+</body>
+</html>

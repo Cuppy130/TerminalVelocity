@@ -5,7 +5,14 @@
     "players": {
       ".read": true,
       "$uid": {
-        ".write": "auth != null && auth.uid == $uid"
+        ".write": "auth != null && auth.uid == $uid",
+        "maps": {
+          "$mapId": {
+            "isPublic": {
+              ".validate": "newData.isBoolean()"
+            }
+          }
+        }
       }
     }
   }

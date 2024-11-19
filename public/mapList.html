@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map list</title>
+    <style>
+        /* Dark theme */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+            min-width: none;
+        }
+        body {
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+        }
+        ul {
+            list-style: none;
+        }
+        h3 {
+            margin: 10px 0;
+
+            /* this is a hack to make the li element clickable */
+            cursor: pointer;
+
+            /* some other styles */
+            padding: 10px;
+            background-color: #444;
+            border-radius: 5px;
+            margin-bottom: 5px;
+
+        }
+    </style>
+</head>
+<body>
+    <h1>Maps:</h1>
+    <ul id="mapList"></ul>
+    <script type="module" src="scripts/mapList.js"></script>
+</body>
+</html>
