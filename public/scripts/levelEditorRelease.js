@@ -513,8 +513,7 @@ function init() {
     //decrease the shadow resolution
     dirLight.shadow.mapSize.width = 1024;
     dirLight.shadow.mapSize.height = 1024;
-    //lightshadow
-    //no camera settings
+    //lightshadow camera
     dirLight.shadow.camera.left = -50;
     dirLight.shadow.camera.right = 50;
     dirLight.shadow.camera.top = 50;
@@ -522,7 +521,7 @@ function init() {
 
     scene.add(dirLight);
     
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
     scene.add(ambientLight);
 }
 
